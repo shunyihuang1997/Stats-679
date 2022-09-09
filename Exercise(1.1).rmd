@@ -1,0 +1,55 @@
+---
+title: "Exercise 1.1"
+author: "Shunyi Huang"
+date: "2022/9/7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading packages and importing data
+
+```{r cars}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+temperature <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat479_s22/main/data/temperatures.csv")
+head(temperature,3)
+```
+
+
+Q1: Version of figure 
+```{r}
+ggplot(temperature, aes(x = month, y = temperature, group = city, colour = city, lw = 5))+
+  geom_line()
+```
+
+ Q2: group_by + summarise
+
+```{r}
+temp_df = temperature %>% group_by(city,month) %>% summarise(mean = mean(temperature))
+temp_df
+```
+
+
+Q3: Version figure 2.4
+```{r}
+ggplot(temp_df, aes(x = month, y = city, fill = mean)) +
+  geom_tile(colour="white", size=1) + 
+  theme_bw() + 
+  scale_fill_gradient(low = "#353436",
+                    high = "#f6f805",
+                    guide = "colorbar") +
+  coord_fixed()
+```
+
+Q4: Compare and Contrast two displays.
+From my point of view, the line plot might be easier for us to visualize. Because the geon_tile is pretty much the same as heatmap and it takes effort to modify the color for better visualization, thus line plot is faster to make.
+Figure 2.3 (lineplot) tells user the distribution, and enable the view of short/long term trend
+Figure 2.4 (heatmap) tells user the correlation among the three features.
+
+
+
+
