@@ -1,0 +1,58 @@
+---
+title: "In-class exercise 3.1"
+author: "Shunyi Huang"
+date: "2022/9/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+birds <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat479_s22/main/exercises/data/birds.csv") %>%
+  separate(Species, c("genus", "species2"))
+
+
+bird_summaries <- birds %>%
+  group_by(genus) %>%
+  summarise(across(c("Asymmetry", "Ellipticity", "AvgLength (cm)", "Number of images", "Number of eggs"), list(MEAN = mean, STANDARD_DEVIATION = sd))) %>%
+  arrange(-Ellipticity_MEAN)
+
+
+# scatterplot <- function(){
+#   ggplot(birds,aes(x = Asymmetry, y = Ellipticity))+
+#     geom_point(size=2)
+# }
+
+ui <- fluidPage(
+  selectInput('dropdown', 'Species', choice = unique(birds$species2), multiple = TRUE),
+  plotOutput('scatter'),
+  dataTableOutput('table')
+)
+
+
+server <- function(input, output){
+  output$scatter <- renderPlot({
+    birds = birds[which(birds$species2 %in% input$dropdown),]
+    ggplot(birds,aes(x = Asymmetry, y = Ellipticity))+
+      geom_point(size=2)
+  })
+  
+  output$table <- renderDataTable({
+    birds[which(birds$species2 %in% input$dropdown),]
+  })
+}
+
+shinyApp(ui,server)
+```
+
+
+
+
+```{r}
+ggplot(birds,aes(x = Asymmetry, y = Ellipticity))+
+  geom_point(size=2)
+```
+

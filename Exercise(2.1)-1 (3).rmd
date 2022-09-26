@@ -1,0 +1,110 @@
+---
+title: "Exercise 2.1"
+author: "Shunyi Huang"
+date: "2022/9/7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Q1: Provide server code which would allow the scatterplot to update the highlighted athletes depending
+on the currently selected sports.
+
+```{r}
+library(shiny)
+library(tidyverse)
+olympics <- read_csv("https://uwmadison.box.com/shared/static/rzw8h2x6dp5693gdbpgxaf2koqijo12l.csv")
+#' Scatterplot with highlighted points
+#'
+#' Assumes a column in df called "selected" saying whether points should be
+#' larger / darker
+# scatterplot <- function(df) {
+#   ggplot(df) +
+#     geom_point(
+#     aes(Weight, `Height, cm`,
+#     alpha = as.numeric(selected),
+#     size = as.numeric(selected))
+#     ) +
+#     scale_alpha(range = c(0.05, .8)) +
+#     scale_size(range = c(0.1, 1))
+# }
+
+#olympics$selected = sample(1, size = nrow(olympics), replace = TRUE)
+olympics$selected = runif(nrow(olympics), 0, 1)
+scatterplot <- function(df) {
+  ggplot(df) +
+    geom_point(
+    aes(Weight, `Height, cm`,
+    alpha = as.numeric(selected),
+    size = as.numeric(selected)))+
+    scale_alpha(range = c(0.05, .8)) +
+    scale_size(range = c(0.1, 1))
+}
+
+```
+
+
+```{r}
+#' Assumes a column in df called "selected" saying whether points should be
+#' larger / darker
+
+ui <- fluidPage(
+  #Front end interface
+  selectInput("dropdown", "Select a Sport", choices = unique(olympics$Sport), multiple = TRUE),
+  plotOutput("scatterplot"),
+  dataTableOutput('table')
+)
+
+server <- function(input, output) {
+  #Back end logic
+  # cur_data <- reactive({
+  #   sports_name = input$dropdown
+  #   print(sports_name)
+  #   olympics$selected = 0
+  #   olympics$selected[which(olympics$Sport %in% sports_name)] = 1
+  # })
+  
+  olymp_sub <- reactive({
+    olympics%>%mutate(selected=1 * (Sport %in% input$dropdown))
+  })
+  
+  output$scatterplot <- renderPlot({
+    # olympics$selected = 0
+    # olympics$selected[which(olympics$Sport %in% input$dropdown)] = 1
+    scatterplot(olymp_sub())
+  })
+  
+  output$table <- renderDataTable({
+    # olympics$selected = 0
+    # olympics$selected[which(olympics$Sport == input$dropdown)] = 1
+    # olympics[olympics$selected == 1,]
+    olymp_sub()[olymp_sub()$selected == 1,]
+  }
+  )
+  
+}
+
+
+
+
+
+shinyApp(ui,server)
+```
+    Describe changes to your solution to (a) to meet the new requirements. How
+    would you minimize code duplication? Be as specific as possible.
+    
+    In (a) I initialized all the values in selected to 0 and the one in dropdown to 1, and this step was used in both creating plot and table. 
+    To minimize the code, I used a similar reactive function in the demo from class which only initialized the selected sport to 1 in the selected column but in a different form in shiny
+
+```{r}
+
+```
+
+
+
+
+
+
+

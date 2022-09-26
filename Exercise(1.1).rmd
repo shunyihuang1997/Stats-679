@@ -22,18 +22,9 @@ head(temperature,3)
 
 Q1: Version of figure 
 ```{r}
-ggplot(temperature, aes(x = date, y = temperature, group = city, colour = city, lw = 5))+
+ggplot(temperature, aes(x = month, y = temperature, group = city, colour = city, lw = 5))+
   geom_line()
 ```
-
-
-
-```{r}
-ggplot(temperature)+
-  geom_line(aes(date, temperature, col = city),size = 1)+
-  scale_x_date(date_labels = '%B')
-```
-
 
  Q2: group_by + summarise
 
@@ -45,8 +36,8 @@ temp_df
 
 Q3: Version figure 2.4
 ```{r}
-ggplot(temp_df, aes(x = month, y = city, fill = mean, reorder(city,mean))) +
-  geom_tile(colour="white", size=2) + 
+ggplot(temp_df, aes(x = month, y = city, fill = mean)) +
+  geom_tile(colour="white", size=1) + 
   theme_bw() + 
   scale_fill_gradient(low = "#353436",
                     high = "#f6f805",

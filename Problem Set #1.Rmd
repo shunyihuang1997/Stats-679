@@ -1,0 +1,357 @@
+---
+title: 'Problem set #1'
+author: "Shunyi Huang"
+date: "2022/9/24"
+# output:
+#   html_document: default
+runtime: shiny
+output: html_document
+---
+
+All library
+```{r}
+library(tidyverse)
+library(shiny)
+library(readr)
+library(dplyr) 
+library(knitr)
+```
+
+
+
+<font size = '4'> London Olympics </font> 
+```{r}
+library(shiny)
+olympics <- read.csv("https://uwmadison.box.com/shared/static/rzw8h2x6dp5693gdbpgxaf2koqijo12l.csv")
+olympics$selected = runif(nrow(olympics), 0, 1)
+
+ui <- fluidPage(
+  selectInput("dropdown", "Select a Sport", choices = unique(olympics$Sport), multiple = TRUE),
+  fluidRow(
+    column(width = 4,dataTableOutput('table')),
+    column(width = 4,dataTableOutput('avg_age')),
+    column(width = 4, dataTableOutput('total_people'))
+  )
+
+
+)
+
+server <- function(input, output) {
+  #reactive function
+  olymp_sub <- reactive({
+    olympics%>%mutate(selected=1 * (Sport %in% input$dropdown))
+  })
+
+
+  # table across all sports
+  output$table <- renderDataTable({
+    olymp_sub()[olymp_sub()$selected == 1, c('Name', 'Age', 'Sport')]
+  })
+
+
+  #average age across each sports
+  output$avg_age <-renderDataTable({
+    avg_age = olymp_sub()[olymp_sub()$selected == 1, c('Name', 'Age', 'Sport')] %>%
+      group_by(Sport) %>%
+      summarise_at(vars(Age), list(name = mean))
+
+    colnames(avg_age) = c('sport', 'average_age')
+    avg_age = avg_age[order(avg_age$average_age),]
+    avg_age
+  })
+
+
+  #Extra question: order the number of people in each sport in ascending order
+  output$total_people <-renderDataTable({
+    total = olymp_sub()[olymp_sub()$selected == 1, c('Name', 'Sport')] %>%
+      group_by(Sport) %>%
+      summarise(total = n())
+
+    colnames(total) = c('sport', 'sum')
+    total = total[order(total$sum),]
+    total
+  })
+
+}
+
+
+shinyApp(ui, server)
+```
+
+
+
+<font size = '4'> Pokemon </font> 
+```{r}
+pokemon <- read.csv("https://uwmadison.box.com/shared/static/hf5cmx3ew3ch0v6t0c2x56838er1lt2c.csv")
+#A
+pokemon$attack_to_defense = pokemon$Attack/pokemon$Defense
+
+#B
+type_1_median = pokemon %>% 
+  group_by(type_1) %>%
+  #mutate(median = median(attack_to_defense))
+  summarise_at(vars(attack_to_defense), list(median = median))
+type_1_median = type_1_median[order(type_1_median$median, decreasing = TRUE),]
+
+
+#C
+order = list(type_1_median$type_1)
+order = c( "Fighting" ,"Dragon"  , "Fire"    , "Dark"    , "Normal"   ,"Poison"   ,"Electric", "Ground",   "Flying"  ,"Ice" ,     "Psychic",  "Water" ,   "Grass" ,   "Bug"   ,   "Rock"  ,   "Fairy"  ,  "Ghost" ,   "Steel" )
+#pokemon = pokemon[order(sapply(pokemon$type_1, function(type_1) which(type_1 == order))),]
+
+ggplot(data = pokemon, aes(x = Attack, y = Defense))+
+  geom_point()+
+  #facet_wrap(~type_1)
+  facet_wrap(~factor(type_1, levels = order))
+
+
+#D
+# Thoughts: The dynamic queries can be implemented using Shiny library. One example I could think of is to apply slider to select the range of HP/Attck/Defense/speed_attack and show the table with the all the filters. 
+
+# Structure: By implementing the ui and server function, we could run the shiny app, and there will be multiple dropdown threholds showing up where user could choose based on their preference.
+
+# With user input: when user chooses the range of the features, the table that has been filtered will be shown
+```
+
+
+
+
+<font size = '4'> Soccer Code Review </font> 
+Code review:
+#1: It might be better to move the ungroup() function after the summarise() to decrease the risk of forgetting this step.
+#2: The plotting function can follow right after the best team selection to make the code more compact
+#3: It is good to have the lengend of wins and n_games
+```{r}
+#calculate the winning rate grouping by team and year
+win_props <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat479_s22/main/exercises/data/understat_per_game.csv") %>%
+  group_by(team, year) %>%
+  summarise(n_games = n(), wins = sum(wins) / n_games)
+
+#Select top 20% of the wins
+best_teams <- win_props %>%
+  ungroup() %>% 
+  slice_max(wins, prop = 0.2) %>%
+  pull(team)
+
+
+win_props %>%
+  filter(team %in% best_teams) %>%
+  ggplot() +
+  geom_point(aes(year, team, size = n_games, alpha = wins))
+
+
+
+```
+
+Modifing the soccer problem code to make it more concise
+
+#Recommendation #1: Since we want to know the the top wins in the last few years, we could decrease the number of prop in slice_max().
+
+#Recommendation #2 (Implemented): We can also replace the alpha with color so it might be better for visualization. 
+
+#Recommendation #3 (I can't figure it out): use facet_wrap to separate by teams, where each plot has year as its x-axis and n_games as y-axis. 
+
+```{r}
+win_props <- read_csv("https://raw.githubusercontent.com/krisrs1128/stat479_s22/main/exercises/data/understat_per_game.csv") %>%
+  group_by(team, year) %>%
+  summarise(n_games = n(), wins = sum(wins) / n_games) %>% 
+  ungroup()
+
+# Replace the alpha with color parameter and the prop parameter in slice_max
+ggp <- win_props %>%
+  slice_max(wins, prop = 0.05) %>%
+  ggplot() +
+  geom_point(aes(year, team, size = n_games, color = wins))
+
+# Trying to implement recommendation #3 but can't 
+# ggp <- win_props %>%
+#   slice_max(wins, prop = 0.2) %>%
+#   mutate(fct_reorder(wins))
+#   ggplot() +
+#   geom_col(aes(team,n_games,alpha = wins))+
+#   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+ggp
+```
+
+
+
+
+<font size = '4'>  Visual Redesign </font> 
+
+```{r}
+library(shiny)
+#A
+mtcars$cyl <- as.factor(mtcars$cyl)
+ggplot(mtcars, aes(x=hp, y=mpg, color=cyl, shape=cyl)) +
+    geom_point(size=3)
+
+
+#B
+# This plot reveal the relationship between mpg and hp, and the cylinder number has been converted to factor and shaped. The take away matched the expectation. One design that might be hard to implement is to change the comparison features. For instance, if I want to find out the relationship between weight and hp, I will have to go back to the code and replace them manually.
+
+
+
+#C
+# The original plot is pretty easy to interpret where we can see the relationship between the two features we are interested in. 
+
+
+
+#D
+#I would like to apply shiny to improve the variability of this plot. Which I could choose any two different features and use the scatter plot to see their relationship, as well as adding a hue
+scatterplot <- function( x_feature, y_feature, hue){
+  #mtcars$cyl <- as.factor(mtcars$cyl)
+  ggplot(mtcars, aes_string(x=x_feature, y=y_feature, color=hue, shape = as.factor(mtcars[,'cyl']))) +
+    geom_point(size=3)
+}
+
+ui  = fluidPage(
+  fluidRow(
+    column(width = 4, selectInput('dropdown_x', 'Select x', choice = colnames(mtcars))),
+    column(width = 4, selectInput('dropdown_y', 'Select y', choices = colnames(mtcars))),
+    column(width = 4, selectInput('dropdown_hue', 'Select hue', choice = colnames(mtcars)))
+  ),
+  
+  plotOutput('scatterplot')
+)
+
+server = function(input, output){
+  output$scatterplot = renderPlot({
+    scatterplot(input$dropdown_x, input$dropdown_y, input$dropdown_hue)
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+
+
+<font size = '4'>  Antibiotics Comparison </font> 
+```{r}
+antibiotic <- read_csv("https://uwmadison.box.com/shared/static/5jmd9pku62291ek20lioevsw1c588ahx.csv")
+#antibiotic
+
+#Approach 3
+ggplot()+
+  geom_line(antibiotic, mapping = aes(time,  svalue, color = species))+
+  facet_grid(ind~.)
+```
+
+
+
+<font size = '4'>  Name App Bugs (A) </font> 
+Error #1: In the server function, we can't assign variable to input because it is for read only. To rewrite, we have: output$printed_name <- renderText({paste0("Hello ", input$name, "!")})
+```{r}
+library(shiny)
+ui <- fluidPage(
+  titlePanel("Hello!"),
+  textInput("name", "Enter your name"),
+  textOutput("printed_name")
+)
+
+server <- function(input, output) {
+  #Original code (Not runnable)
+  # input$name <- paste0("Welcome to shiny, ", input$name, "!")
+  # output$printed_names <- renderText({ input$name })
+  
+  #Modified code (runnable)
+  output$printed_name <- renderText({paste0("Hello ", input$name, "!")})
+}
+app <- shinyApp(ui, server)
+app
+```
+
+<font size = '4'>  Name App Bugs (B) </font> 
+Error #1: The name of the output function has an extra 's'
+```{r}
+library(shiny)
+ui <- fluidPage(
+  titlePanel("Hello!"),
+  textInput("name", "Enter your name"),
+  textOutput("printed_name")
+)
+
+server <- function(input, output) {
+  #Original code(Not showing the right content)
+  # output$printed_names <- renderText({
+  #   paste0("Welcome to shiny, ", input$name, "!")
+  # })
+  
+  #Modified code(runnable)
+  output$printed_name <- renderText({
+    paste0("Welcome to shiny, ", input$name, "!")
+  })
+}
+
+app <- shinyApp(ui, server)
+app
+```
+
+<font size = '4'>  Name App Bugs (C) </font> 
+Error #1: the output in the server function used the wrong format, the correct one should be renderText
+```{r}
+library(shiny)
+ui <- fluidPage(
+  titlePanel("Hello!"),
+  textInput("name", "Enter your name"),
+  textOutput("printed_name")
+)
+
+server <- function(input, output) {
+  #Original code (not runnable)
+  # output$printed_name <- renderDataTable({
+  #   paste0("Welcome to shiny, ", input$name, "!")
+  # })
+  
+  #Modefied code (runnable)
+  output$printed_name <- renderText({
+    paste0("Welcome to shiny, ", input$name, "!")
+  })
+}
+app <- shinyApp(ui, server)
+app
+```
+
+
+<font size = '4'>  Name App Bugs (D) </font> 
+Error #1: no comma to separate each panel in the ui function
+```{r}
+library(shiny)
+ui <- fluidPage(
+  #Original code (not runnable)
+  # titlePanel("Hello!")
+  # textInput("name", "Enter your name")
+  # textOutput("printed_name")
+  
+  #Modified code(runnable)
+  titlePanel("Hello!"),
+  textInput("name", "Enter your name"),
+  textOutput("printed_name")
+)
+
+
+server <- function(input, output) {
+  output$printed_name <- renderText({
+    paste0("Welcome to shiny, ", input$name, "!")
+  })
+}
+app <- shinyApp(ui, server)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
